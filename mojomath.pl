@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
 use Mojolicious::Lite -signatures;
-use List::Util qw(shuffle);
 
 # In-memory session storage for score tracking
 my %sessions;
@@ -20,8 +19,12 @@ helper new_problem => sub ($c) {
 helper get_session => sub ($c) {
     my $sid = $c->session('sid');
     unless ($sid && $sessions{$sid}) {
-        $sid = time . rand();
-        $c->session(sid => $sid);
+        # Use Mojolicious built-in session which is cryptographically secure
+        $sid = $c->session->{sid} // do {
+            my $new_sid = join('', map { sprintf('%02x', int(rand(256))) } 1..16);
+            $c->session(sid => $new_sid);
+            $new_sid;
+        };
         $sessions{$sid} = {
             score => 0,
             total => 0
@@ -81,8 +84,7 @@ post '/check' => sub ($c) {
         score => $session->{score},
         total => $session->{total},
         message => $message,
-        correct => $correct,
-        last_problem => $problem
+        correct => $correct
     );
 };
 
